@@ -1,158 +1,150 @@
 const connection = require('../databases');
-exports.getCinemas = (req, res) => {
-  connection.query(
-    'SELECT cinema.id,cinema.name,city.name as city FROM cinema JOIN city ON cinema.city_id=city.id',
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+const Cinema = require('../models/cinema.model');
+
+exports.getCinemas = async (req, res) => {
+  try {
+    const cinemas = await Cinema.getCinemas();
+    res.json(cinemas);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getCinemaById = (req, res) => {
-  connection.query(
-    'SELECT cinema.id,cinema.name,city.id as city_id,city.name as city FROM cinema JOIN city ON cinema.city_id=city.id where cinema.id=?',[req.params.cinemaId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+exports.getCinemaById = async (req, res) => {
+  const { cinemaId } = req.params;
+  try {
+    const results = await Cinema.getCinemaById(cinemaId);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.createCinema = (req, res) => {
-    const {name,cityId}=req.body
-  connection.query(
-    'INSERT INTO cinema(name,city_id) VALUES(?,?)',[name,cityId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
+exports.createCinema = async (req, res) => {
+  const { name, cityId } = req.body;
+  try {
+    const cinemaResult = await Cinema.findCinemaByName(name, cityId);
+    if (cinemaResult.length > 0) {
       res.json({
-        success: true,
-        data:{
-            message:'Thêm rạp thành công'
-        }
+        success: false,
+        data: {
+          message: 'Tên rạp không được trùng nhau',
+        },
       });
+      return;
     }
-  );
+    const results = await Cinema.createCinema(name, cityId);
+    res.json({
+      success: true,
+      data: {
+        message: 'Thêm rạp thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.updateCinema = (req, res) => {
-    const {id,name,cityId}=req.body
-  connection.query(
-    'UPDATE cinema SET name=?,city_id=? WHERE id=?',[name,cityId,id],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
+
+exports.updateCinema = async (req, res) => {
+  try {
+    const { id, name, cityId } = req.body;
+    const cinemaResult = await Cinema.findCinemaByName(name, cityId);
+    if (cinemaResult.length > 0) {
       res.json({
-        success: true,
-        data:{
-            message:'Cập nhật rạp thành công'
-        }
+        success: false,
+        data: {
+          message: 'Tên rạp không được trùng nhau',
+        },
       });
+      return;
     }
-  );
+
+    const results = await Cinema.update(id, name, cityId);
+    res.json({
+      success: true,
+      data: {
+        message: 'Cập nhật rạp thành công',
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
-exports.deleteCinema = (req, res) => {
-    const {id}=req.body
-  connection.query(
-    'DELETE FROM room  WHERE cinema_id=?',[id],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      connection.query(
-        'DELETE FROM cinema  WHERE id=?',[id],
-        (err, results) => {
-          if (err) {
-            res.status(500).json({ message: err.message });
-            return;
-          }
-          res.json({
-            success: true,
-            data:{
-                message:'Xóa rạp thành công'
-            }
-          });
-        }
-      );
-    }
-  );
+
+exports.deleteCinema = async (req, res) => {
+  try {
+    const { id } = req.body;
+    const results = await Cinema.deleteCinema(id);
+    res.json({
+      success: true,
+      data: {
+        message: 'Xóa rạp thành công',
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
-exports.getCities = (req, res) => {
-  connection.query(
-    'SELECT * FROM city',
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+
+exports.getCities = async (req, res) => {
+  try {
+    const cities = await Cinema.getCities();
+    res.json(cities);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getRoomsByCinemaId = (req, res) => {
-    const {cinemaId}=req.params
-    console.log('cinemaId',cinemaId);
-  connection.query(
-    'SELECT * FROM room WHERE cinema_id=?',[cinemaId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+exports.getRoomsByCinemaId = async (req, res) => {
+  const { cinemaId } = req.params;
+  try {
+    const rooms = await Cinema.getRoomsByCinemaId(cinemaId);
+    res.json(rooms);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
-exports.getCinemaByCityId = (req, res) => {
-    const {cityId}=req.params
-  connection.query(
-    'SELECT * FROM cinema WHERE city_id=?',[cityId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+
+exports.getCinemaByCityId = async (req, res) => {
+  const { cityId } = req.params;
+  try {
+    const cinemas = await Cinema.getCinemaByCityId(cityId);
+    res.json(cinemas);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getCinemaByRoomId = (req, res) => {
-    const {roomId}=req.params
-  connection.query(
-    'SELECT * FROM room WHERE id=?',[roomId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+
+exports.getCinemaByRoomId = async (req, res) => {
+  const { roomId } = req.params;
+  try {
+    const cinemas = await Cinema.getCinemaByRoomId(roomId);
+    res.json(cinemas);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.addRoom = (req, res) => {
-    const {roomName,cinemaId}=req.body
-  connection.query(
-    'INSERT INTO room(name,cinema_id) VALUES(?,?)',[roomName,cinemaId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
+
+exports.addRoom = async (req, res) => {
+  const { roomName, cinemaId } = req.body;
+  try {
+    const roomResult = await Cinema.findRoomByName(roomName, cinemaId);
+
+    if (roomResult.length > 0) {
       res.json({
-        success: true,
-        data:{
-            message:'Thêm phòng thành công'
-        }
+        success: false,
+        data: {
+          message: 'Tên phòng không được trùng nhau',
+        },
       });
+      return;
     }
-  );
+
+    const results = await Cinema.addRoom(roomName, cinemaId);
+    res.json({
+      success: true,
+      data: {
+        message: 'Thêm phòng thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

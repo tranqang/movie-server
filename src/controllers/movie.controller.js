@@ -1,74 +1,65 @@
-const model = require('../models/movie.model');
+const Movie = require('../models/movie.model');
 const connection = require('../databases');
-exports.getMovies = (req, res, next) => {
-  model.getMovies((err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
-      return;
-    }
+exports.getMovies = async (req, res, next) => {
+  try {
+    const results = await Movie.getMovies();
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getCategoriesByMovieId = (req, res) => {
-  model.getCategoriesByMovieId(req.params.movieId, (err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
-      return;
-    }
+exports.getCategoriesByMovieId = async (req, res) => {
+  const { movieId } = req.params;
+  try {
+    const results = await Movie.getCategoriesByMovieId(movieId);
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getMovieById = (req, res) => {
-  connection.query(
-    'SELECT movie.*,language.name as language,format.name as format,country.name as country FROM movie JOIN language ON movie.language_id=language.id JOIN format on format.id=movie.format_id JOIN country ON country.id=movie.country_id WHERE movie.id=?',
-    // 'SELECT m.id,m.name,m.description,m.director,m.image,m.view,m.ageLimit,m.timeRelease,m.time,l.name as language f.name as format, f.id as format_id, l.id as language_id ,c.name as country FROM movie m  JOIN language l on m.language_id=l.id  JOIN format f on f.id=m.format_id  JOIN country c on c.id=m.country_id WHERE m.id=?'
-    [req.params.movieId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
-};
-exports.getCategories = (req, res) => {
-  connection.query('SELECT * FROM category', (err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
-      return;
-    }
+exports.getMovieById = async (req, res) => {
+  const { movieId } = req.params;
+  try {
+    const results = await Movie.getMovieById(movieId);
     res.json(results);
-  });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getLanguages = (req, res) => {
-  connection.query('SELECT * FROM language', (err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
-      return;
-    }
-    res.json(results);
-  });
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Movie.getCategories();
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getFormats = (req, res) => {
-  connection.query('SELECT * FROM format', (err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
-      return;
-    }
-    res.json(results);
-  });
+exports.getLanguages = async (req, res) => {
+  try {
+    const languages = await Movie.getLanguages();
+    res.json(languages);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getCountries = (req, res) => {
-  connection.query('SELECT * FROM country', (err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
-      return;
-    }
-    res.json(results);
-  });
+exports.getFormats = async (req, res) => {
+  try {
+    const formats = await Movie.getFormats();
+    res.json(formats);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.createMovie = (req, res) => {
+exports.getCountries = async (req, res) => {
+  try {
+    const countries = await Movie.getCountries();
+    res.json(countries);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.createMovie = async (req, res) => {
   const {
     name,
     director,
@@ -83,9 +74,8 @@ exports.createMovie = (req, res) => {
     formatId,
     categoryId,
   } = req.body;
-  connection.query(
-    'INSERT INTO movie(name,director,description,image,country_id,language_id,view,ageLimit,timeRelease,time,format_id) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-    [
+  try {
+    const results = await Movie.create(
       name,
       director,
       description,
@@ -97,118 +87,76 @@ exports.createMovie = (req, res) => {
       timeRelease,
       time,
       formatId,
-    ],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-
-      connection.query(
-        'INSERT INTO movie_category(movie_id,category_id) VALUES(?,?)',
-        [results.insertId, categoryId],
-        (err, results) => {
-          if (err) {
-            res.status(500).json({ message: err.message });
-            return;
-          }
-
-          res.json({
-            success: true,
-            data: {
-              message: 'Thêm mới phim thành công',
-            },
-          });
-        }
-      );
-    }
-  );
+      categoryId
+    );
+    res.json({
+      success: true,
+      data: {
+        message: 'Thêm mới phim thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.updateMovie = (req, res) => {
-  const {
-    id,
-    name,
-    director,
-    description,
-    image,
-    countryId,
-    languageId,
-    view,
-    ageLimit,
-    timeRelease,
-    time,
-    formatId,
-    categoryId,
-  } = req.body;
-  console.log('req.body', req.body);
-  connection.query(
-    'UPDATE movie SET name=?,director=?,description=?,image=?,country_id=?,language_id=?,view=?,ageLimit=?,timeRelease=?,time=?,format_id=? WHERE id=?',
-    [
-      name,
-      director,
-      description,
-      image,
-      countryId,
-      languageId,
-      view,
-      ageLimit,
-      timeRelease,
-      time,
-      formatId,
+
+exports.updateMovie = async (req, res) => {
+  try {
+    const {
       id,
-    ],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
+      name,
+      director,
+      description,
+      image,
+      countryId,
+      languageId,
+      view,
+      ageLimit,
+      timeRelease,
+      time,
+      formatId,
+      categoryId,
+    } = req.body;
 
-      connection.query(
-        'UPDATE movie_category SET category_id=? WHERE movie_id=?',
-        [categoryId, id],
-        (err, results) => {
-          if (err) {
-            res.status(500).json({ message: err.message });
-            return;
-          }
+    const results = await Movie.update(
+      id,
+      name,
+      director,
+      description,
+      image,
+      countryId,
+      languageId,
+      view,
+      ageLimit,
+      timeRelease,
+      time,
+      formatId,
+      categoryId
+    );
 
-          res.json({
-            success: true,
-            data: {
-              message: 'Cập nhật phim thành công',
-            },
-          });
-        }
-      );
-    }
-  );
+    res.json({
+      success: true,
+      data: {
+        message: 'Cập nhật phim thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
-exports.deleteMovie = (req, res) => {
-  const { id } = req.body;
-  console.log('req.body', req.body);
-  connection.query(
-    'DELETE FROM movie_category WHERE movie_id=?',
-    [id],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
+exports.deleteMovie = async (req, res) => {
+  try {
+    const { id } = req.body;
+    const results = await Movie.delete(id);
 
-      connection.query('DELETE FROM movie WHERE id=?', [id], (err, results) => {
-        if (err) {
-          res.status(500).json({ message: err.message });
-          return;
-        }
-
-        res.json({
-          success: true,
-          data: {
-            message: 'Xóa phim thành công',
-          },
-        });
-      });
-    }
-  );
+    res.json({
+      success: true,
+      data: {
+        message: 'Xóa phim thành công',
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };

@@ -1,82 +1,97 @@
 const connection = require('../databases');
+const moment = require('moment');
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
-exports.login = (req, res, next) => {
+const User = require('../models/auth.model');
+exports.login = async (req, res, next) => {
   const { email, password } = req.body;
-  connection.query(
-    'SELECT * FROM user WHERE email=? AND password=?',
-    [email, password],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      const user = results[0];
-      if (user?.id) {
-        const token = jwt.sign(
-          {
-            userId: user.id,
-            userRole: user.role,
-          },
-          process.env.TOKEN_SECRET,
-          { expiresIn: '1h' }
-        );
-        res.json({
-          accessToken: token,
-        });
-        return;
-      }
-
-      next({ message: 'Đăng nhập thất bại' });
-    }
-  );
-};
-exports.register = (req, res, next) => {
-  const { fullName, email, password, address, dob } = req.body;
-  connection.query(
-    'INSERT INTO user (fullName,email,password,address,dateOfBirth,role) VALUES(?,?,?,?,?,?)',
-    [fullName, email, password, address, dob, 'USER'],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
+  try {
+    const results = await User.findByEmailAndPassword(email, password);
+    const user = results[0];
+    if (user?.id) {
+      const token = jwt.sign(
+        {
+          userId: user.id,
+          userRole: user.role,
+        },
+        process.env.TOKEN_SECRET,
+        { expiresIn: '2h' }
+      );
       res.json({
-        success: true,
+        accessToken: token,
+      });
+      return;
+    }
+    next({ message: 'Đăng nhập thất bại' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.register = async (req, res, next) => {
+  const { fullName, email, password, address, dob } = req.body;
+  try {
+    const userResult = await User.findByEmail(email);
+    if (userResult.length > 0) {
+      res.json({
+        success: false,
         data: {
-          message: 'Đăng ký thành công',
+          message: 'Email đã được sử dụng',
         },
       });
     }
-  );
+    const results = await User.create(fullName, email, password, address, dob);
+    res.json({
+      success: true,
+      data: {
+        message: 'Đăng ký thành công',
+        results: results,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getMyInformation = (req, res) => {
+
+exports.getMyInformation = async (req, res) => {
   const { userId } = req;
-  console.log('userId', userId);
-  connection.query(
-    'SELECT user.id,user.fullName,user.role,user.email,user.address,user.gender,user.dateOfBirth,user.avatar FROM user WHERE id=?',
-    [userId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+  try {
+    const results = await User.getMyInformation(userId);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.getMyTickets = (req, res) => {
+exports.updateMyInformation = async (req, res) => {
+  const { fullName, dateOfBirth, address, avatar } = req.body;
+  const formatDate = moment(dateOfBirth).format('YYYY-MM-DD');
   const { userId } = req;
-  console.log('userId', userId);
-  connection.query(
-    'SELECT ticket.id,ticket.value,ticket.created_date,ticket_detail.chair_id,chair.xPosition,cinema.name as cinema, chair.yPosition,schedule.premiere,room.name as room,movie.name as movie FROM ticket JOIN ticket_detail ON ticket_detail.ticket_id=ticket.id JOIN schedule ON schedule.id=ticket.schedule_id JOIN room ON room.id=schedule.room_id JOIN movie ON movie.id=schedule.movie_id JOIN chair ON chair.id=ticket_detail.chair_id JOIN cinema ON cinema.id=room.cinema_id WHERE user_id=?',
-    [userId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+  try {
+    const results = await User.updateMyInformation(
+      fullName,
+      formatDate,
+      address,
+      avatar,
+      userId
+    );
+    res.json({
+      success: true,
+      data: {
+        message: 'Sửa thông tin thành công',
+        results: results,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getMyTickets = async (req, res) => {
+  const { userId } = req;
+  try {
+    const result = await User.getMyTickets(userId);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };

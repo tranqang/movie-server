@@ -1,80 +1,74 @@
 const connection = require('../databases');
-exports.getEmps = (req, res) => {
-  connection.query('SELECT * FROM user WHERE role="EMP"', (err, results) => {
-    if (err) {
-      res.status(500).json({ message: err.message });
+const Emp = require('../models/emp.model');
+exports.getEmps = async (req, res) => {
+  try {
+    const emps = await Emp.getEmps();
+    res.json(emps);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+exports.createEmp = async (req, res) => {
+  const { fullName, email, password, address } = req.body;
+  try {
+    const resultEmp = await Emp.findEmpByEmail(email);
+    if (resultEmp.length > 0) {
+      res.json({
+        success: false,
+        data: {
+          message: 'Email nhân viên đã tồn tại',
+        },
+      });
       return;
     }
-    res.json(results);
-  });
+
+    const results = await Emp.create(fullName, address, email, password);
+    res.json({
+      success: true,
+      data: {
+        message: 'Thêm nhân viên thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.createEmp = (req, res) => {
-  const { fullName, email, password, address } = req.body;
-  connection.query(
-    'INSERT INTO user(fullName,address,email,password,role) VALUES(?,?,?,?,"EMP")',
-    [fullName, address, email, password],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json({
-        success: true,
-        data:{
-            message:'Thêm nhân viên thành công'
-        }
-      });
-    }
-  );
-};
-exports.getEmpById = (req, res) => {
+
+exports.getEmpById = async (req, res) => {
   const { empId } = req.params;
-  connection.query(
-    'SELECT fullName,address,email,password from user WHERE id=?',
-    [empId],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json(results);
-    }
-  );
+  try {
+    const emp = await Emp.getEmpById(empId);
+    res.json(emp);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.updateEmp = (req, res) => {
+exports.updateEmp = async (req, res) => {
   const { id, fullName, email, password, address } = req.body;
-  connection.query(
-    'UPDATE user SET fullName=?,address=?,email=?,password=? WHERE id=?',
-    [fullName, address, email, password, id],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json({
-        success: true,
-        data:{
-            message:'Cập nhật nhân viên thành công'
-        }
-      });
-    }
-  );
+
+  try {
+    const results = await Emp.update(fullName, address, email, password, id);
+    res.json({
+      success: true,
+      data: {
+        message: 'Cập nhật nhân viên thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
-exports.deleteEmp = (req, res) => {
-  connection.query(
-    'DELETE FROM user WHERE id=?',
-    [req.body.id],
-    (err, results) => {
-      if (err) {
-        res.status(500).json({ message: err.message });
-        return;
-      }
-      res.json({
-        success: true,
-        data:{
-            message:'Xóa nhân viên thành công'
-        }
-      });
-    }
-  );
+exports.deleteEmp = async (req, res) => {
+  const { id } = req.body;
+  try {
+    const results = await Emp.delete(id);
+    res.json({
+      success: true,
+      data: {
+        message: 'Xóa nhân viên thành công',
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
